@@ -1,0 +1,60 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: gop-fs-service
+spec:
+  type: NodePort
+  ports:
+    - port: 8080
+      targetPort: 8080
+      nodePort: 31200
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: gop-fileserver
+  labels:
+    app: fs
+spec:
+  containers:
+    - name: gop-fileserver
+      image: kodekloud/fileserver
+      ports:
+        - containerPort: 8080
+          name: gop-fileserver
+      volumeMounts:
+        - mountPath: "/web"
+          name: data-store
+  volumes:
+    - name: data-store
+      persistentVolumeClaim:
+        claimName: data-pvc
+---
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: data-pv
+spec:
+  claimRef:
+    name: data-pvc
+    namespace: default
+  capacity:
+    storage: 1Gi
+  accessModes:
+    - ReadWriteMany
+  hostPath:
+    path: "/web"
+    type: DirectoryOrCreate
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: data-pvc
+  namespace: default
+spec:
+  accessModes:
+    - ReadWriteMany
+  resources:
+    requests:
+      storage: 1Gi
+  volumeName: data-pv
