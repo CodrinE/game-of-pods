@@ -1,0 +1,84 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: drupal
+  labels:
+    app: drupal
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: drupal
+  template:
+    metadata:
+      name: drupal
+      labels:
+        app: drupal
+    spec:
+      containers:
+        - name: drupal
+          image: drupal:8.6
+          ports:
+            - containerPort: 80
+              name: drupal
+          volumeMounts:
+            - mountPath: /var/www/html/modules
+              name: modules
+            - mountPath:  /var/www/html/profiles
+              name: profiles
+            - mountPath:  /var/www/html/sites
+              name: sites
+            - mountPath: /var/www/html/themes
+              name: themes
+
+      initContainers:
+        - name: init-sites-volume
+          image: drupal:8.6
+          volumeMounts:
+            - mountPath: /data
+              name: init-sites-volume
+          command: [ "/bin/bash", "-c" ]
+          args: [ 'cp -r /var/www/html/sites/ /data/; chown www-data:www-data /data/ -R' ]
+      volumes:
+        - name: init-sites-volume
+          persistentVolumeClaim:
+            claimName: drupal-pvc
+        - name: themes
+          persistentVolumeClaim:
+            claimName: drupal-pvc
+        - name: sites
+          persistentVolumeClaim:
+            claimName: drupal-pvc
+        - name: modules
+          persistentVolumeClaim:
+            claimName: drupal-pvc
+        - name: profiles
+          persistentVolumeClaim:
+            claimName: drupal-pvc
+
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: drupal-pvc
+spec:
+  storageClassName: normal
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 5Gi
+---
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: drupal-pv
+spec:
+  storageClassName: manual
+  capacity:
+    storage: 5Gi
+  accessModes:
+    - ReadWriteOnce
+  hostPath:
+    path: "/drupal-data"
+---
